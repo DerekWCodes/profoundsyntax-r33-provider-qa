@@ -1,0 +1,40 @@
+name: ProfoundSyntax Draco Vendor Fetch
+on:
+  push:
+    paths:
+      - ".github/workflows/ps-draco-vendor-fetch.yml"
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Fetch and verify pinned Google Draco 1.5.7 glTF decoder
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p vendor
+          curl -fsSL --retry 3 -o vendor/draco_wasm_wrapper_gltf.js https://raw.githubusercontent.com/google/draco/1.5.7/javascript/draco_wasm_wrapper_gltf.js
+          curl -fsSL --retry 3 -o vendor/draco_decoder_gltf.wasm https://raw.githubusercontent.com/google/draco/1.5.7/javascript/draco_decoder_gltf.wasm
+          test "$(wc -c < vendor/draco_wasm_wrapper_gltf.js)" -eq 58456
+          test "$(wc -c < vendor/draco_decoder_gltf.wasm)" -eq 192593
+          python3 - <<'PY'
+          import hashlib, pathlib
+          expected = {
+              "vendor/draco_wasm_wrapper_gltf.js": "43f15568384c84f9506cd86fc4a8736e1ba2ec1f",
+              "vendor/draco_decoder_gltf.wasm": "26aa5d3c9301490e6f88ba5d3283603bcd072b57",
+          }
+          for path, want in expected.items():
+              data = pathlib.Path(path).read_bytes()
+              got = hashlib.sha1(b"blob " + str(len(data)).encode() + b"\\0" + data).hexdigest()
+              if got != want:
+                  raise SystemExit(f"{path}: Git blob SHA mismatch {got} != {want}")
+              print(path, len(data), got)
+          PY
+      - name: Upload verified decoder artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: profoundsyntax-draco-1.5.7
+          path: vendor/
+          if-no-files-found: error
+          retention-days: 1
