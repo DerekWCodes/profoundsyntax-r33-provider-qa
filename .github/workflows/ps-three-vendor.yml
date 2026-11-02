@@ -1,0 +1,29 @@
+name: ProfoundSyntax Three Vendor
+on:
+  push:
+    paths:
+      - ".github/workflows/ps-three-vendor.yml"
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Pin Three.js r187
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          npm pack three@0.187.0
+          tar -xzf three-0.187.0.tgz
+          cp package/build/three.module.min.js out/three-r187.module.min.js
+          cp package/examples/jsm/controls/OrbitControls.js out/OrbitControls-r187.js
+          cp package/examples/jsm/controls/TransformControls.js out/TransformControls-r187.js
+          cp package/LICENSE out/three-LICENSE.txt
+          sha256sum out/* | sort > out/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: profoundsyntax-three-r187
+          path: out/
+          if-no-files-found: error
+          retention-days: 1
