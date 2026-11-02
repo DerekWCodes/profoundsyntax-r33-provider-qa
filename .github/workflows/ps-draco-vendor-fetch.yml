@@ -26,7 +26,7 @@ jobs:
           }
           for path, want in expected.items():
               data = pathlib.Path(path).read_bytes()
-              got = hashlib.sha1(b"blob " + str(len(data)).encode() + b"\\0" + data).hexdigest()
+              got = hashlib.sha1(b"blob " + str(len(data)).encode() + bytes([0]) + data).hexdigest()
               if got != want:
                   raise SystemExit(f"{path}: Git blob SHA mismatch {got} != {want}")
               print(path, len(data), got)
