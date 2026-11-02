@@ -3,13 +3,15 @@ on:
   push:
     paths:
       - ".github/workflows/ps-three-vendor.yml"
+      - "tmp/browser-3d-creator.js"
 jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
-      - name: Pin Three.js r187
+      - uses: actions/checkout@v4
+      - name: Pin Three.js r187 and minify creator runtime
         shell: bash
         run: |
           set -euo pipefail
@@ -20,7 +22,11 @@ jobs:
           cp package/examples/jsm/controls/OrbitControls.js out/OrbitControls-r187.js
           cp package/examples/jsm/controls/TransformControls.js out/TransformControls-r187.js
           cp package/LICENSE out/three-LICENSE.txt
+          cp tmp/browser-3d-creator.js out/browser-3d-creator.js
           npx --yes terser@5.44.0 out/three-r187.module.js -c -m -o out/three-r187.module.min.js
+          npx --yes terser@5.44.0 out/OrbitControls-r187.js -c -m -o out/OrbitControls-r187.min.js --module
+          npx --yes terser@5.44.0 out/TransformControls-r187.js -c -m -o out/TransformControls-r187.min.js --module
+          npx --yes terser@5.44.0 out/browser-3d-creator.js -c -m -o out/browser-3d-creator.min.js --module
           sha256sum out/* | sort > out/SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         with:
