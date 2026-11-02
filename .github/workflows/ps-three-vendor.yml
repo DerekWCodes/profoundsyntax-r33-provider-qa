@@ -11,22 +11,31 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
-      - name: Pin Three.js r187 and minify creator runtime
+      - name: Build pinned self-contained Three.js creator runtime
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p out
+          mkdir -p out work
           npm pack three@0.187.0
           tar -xzf three-0.187.0.tgz
           cp package/build/three.module.js out/three-r187.module.js
+          cp package/build/three.core.js out/three-r187.core.js
           cp package/examples/jsm/controls/OrbitControls.js out/OrbitControls-r187.js
           cp package/examples/jsm/controls/TransformControls.js out/TransformControls-r187.js
           cp package/LICENSE out/three-LICENSE.txt
           cp tmp/browser-3d-creator.js out/browser-3d-creator.js
-          npx --yes terser@5.44.0 out/three-r187.module.js -c -m -o out/three-r187.module.min.js
-          npx --yes terser@5.44.0 out/OrbitControls-r187.js -c -m -o out/OrbitControls-r187.min.js --module
-          npx --yes terser@5.44.0 out/TransformControls-r187.js -c -m -o out/TransformControls-r187.min.js --module
-          npx --yes terser@5.44.0 out/browser-3d-creator.js -c -m -o out/browser-3d-creator.min.js --module
+          cp tmp/browser-3d-creator.js work/browser-3d-creator.js
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('work/browser-3d-creator.js')
+          s=p.read_text()
+          s=s.replace("import * as THREE from '../vendor/three-r187.module.min.js';","import * as THREE from 'three';")
+          s=s.replace("import { OrbitControls } from '../vendor/OrbitControls-r187.js';","import { OrbitControls } from 'three/addons/controls/OrbitControls.js';")
+          s=s.replace("import { TransformControls } from '../vendor/TransformControls-r187.js';","import { TransformControls } from 'three/addons/controls/TransformControls.js';")
+          p.write_text(s)
+          PY
+          npm install --no-save --ignore-scripts three@0.187.0 esbuild@0.25.11
+          npx esbuild work/browser-3d-creator.js --bundle --minify --format=esm --platform=browser --outfile=out/browser-3d-creator.min.js
           sha256sum out/* | sort > out/SHA256SUMS.txt
       - uses: actions/upload-artifact@v4
         with:
